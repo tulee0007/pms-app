@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VP/SB Product Management System [PMS]</title>
-<script src="msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;font-size:14px;}
@@ -189,20 +189,25 @@ const SCOPES = [
 let msalInst, currentUser;
 
 async function initMSAL(){
-  msalInst = new msal.PublicClientApplication(msalCfg);
-  await msalInst.initialize();
+  // Fallback: show login screen after 8 seconds no matter what
+  const fallback = setTimeout(()=>{ hide('loadingOverlay'); show('loginScreen'); }, 8000);
   try{
+    msalInst = new msal.PublicClientApplication(msalCfg);
+    await msalInst.initialize();
     await msalInst.handleRedirectPromise();
     const accounts = msalInst.getAllAccounts();
     if(accounts.length){
       msalInst.setActiveAccount(accounts[0]);
+      clearTimeout(fallback);
       await loadCurrentUser(accounts[0]);
     } else {
+      clearTimeout(fallback);
       hide('loadingOverlay'); show('loginScreen');
     }
   } catch(e){
+    clearTimeout(fallback);
     hide('loadingOverlay'); show('loginScreen');
-    document.getElementById('loginErr').textContent = e.message;
+    document.getElementById('loginErr').textContent = 'Init error: ' + e.message;
   }
 }
 
