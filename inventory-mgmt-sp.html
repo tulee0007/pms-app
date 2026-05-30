@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VP/SB Product Management System [PMS]</title>
-<script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js" crossorigin="anonymous"></script>
+<title>VP/SB Product Management Information [PMI]</title>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;font-size:14px;}
@@ -127,8 +127,8 @@ td.num{text-align:right;}
 
 <div id="loginScreen" style="display:none">
   <div class="loginBox">
-    <h1>📦 VP/SB PMS</h1>
-    <div class="loginSub">Product Management System · VP &amp; SB<br>Hệ thống quản lý sản phẩm</div>
+    <h1>📦 VP/SB PMI</h1>
+    <div class="loginSub">Product Management Information · VP &amp; SB<br>Hệ thống thông tin quản lý sản phẩm</div>
     <div class="loginErr" id="loginErr"></div>
     <button class="msBtn" onclick="signIn()">
       <svg width="20" height="20" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
@@ -140,7 +140,7 @@ td.num{text-align:right;}
 
 <div id="app">
   <header>
-    <h1>📦 VP/SB Product Management System <span style="font-size:11px;opacity:.7;font-weight:400">[PMS]</span></h1>
+    <h1>📦 VP/SB Product Management Information <span style="font-size:11px;opacity:.7;font-weight:400">[PMI]</span> <span style="font-size:10px;opacity:.5">/ Hệ thống thông tin quản lý sản phẩm</span></h1>
     <div class="headerRight">
       <span id="headerInfo" class="userBadge"></span>
       <button class="logout" onclick="signOut()">Sign Out / Đăng xuất</button>
@@ -892,7 +892,7 @@ async function audit(){
 function doPrint(title,titleVn,tbl,meta){
   document.getElementById('printZone').innerHTML=`
     <div class="print-header"><h2>${title} <span style="font-size:12px;color:#666;font-weight:400">/ ${titleVn}</span></h2>
-    <p>VP/SB Product Management System [PMS] · ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p></div>
+    <p>VP/SB Product Management Information [PMI] · ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p></div>
     <div class="print-meta">${meta.map(m=>`<span><strong>${m[0]}:</strong> ${m[1]}</span>`).join('')}</div>
     ${tbl}
     <div class="print-footer">Printed by / In bởi: ${currentUser.name} (${currentUser.email}) · ${fmtDt(new Date().toISOString())}</div>`;
