@@ -4,7 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VP/SB Product Management Information [PMI]</title>
-<script src="./msal-browser.min.js"></script>
+<script>
+// Load MSAL from CDN with fallback
+(function(){
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.10.0/lib/msal-browser.min.js';
+  s.onerror = function(){
+    var s2 = document.createElement('script');
+    s2.src = 'https://unpkg.com/@azure/msal-browser@3.10.0/lib/msal-browser.min.js';
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;font-size:14px;}
