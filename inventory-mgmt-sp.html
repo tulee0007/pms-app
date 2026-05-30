@@ -885,7 +885,7 @@ async function delUser(id,name){
    AUDIT LOG
 ══════════════════════════════════════ */
 async function audit(){
-  const logs=await spGet('PMI_Audit','$orderby=Created desc&$top=300');
+  const logs=await spGet('PMI_Audit','$orderby=Created desc');
   return `
   <div class="card">
     <h2>Audit Log — Activity Trail <span class="vn">Nhật ký hoạt động</span></h2>
