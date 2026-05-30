@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VP/SB Product Management System [PMS]</title>
+<script src="msal-browser.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;font-size:14px;}
+.vn{display:block;font-size:10px;color:#aaa;font-weight:400;font-style:italic;}
+th .vn{color:rgba(255,255,255,.6);}
+
+/* Loading */
+#loadingOverlay{display:none;position:fixed;inset:0;background:rgba(15,30,60,.7);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.spinner{border:4px solid rgba(255,255,255,.25);border-top:4px solid #fff;border-radius:50%;width:44px;height:44px;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadingMsg{color:#fff;font-size:14px;font-weight:600;}
+
+/* Login */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e3a5f,#2d6a9f);}
+.loginBox{background:#fff;border-radius:14px;padding:44px 52px;box-shadow:0 8px 32px rgba(0,0,0,.25);width:400px;text-align:center;}
+.loginBox h1{color:#1e3a5f;margin-bottom:4px;font-size:22px;}
+.loginBox .loginSub{color:#aaa;font-size:11px;margin-bottom:28px;line-height:1.8;}
+.loginErr{color:#e74c3c;font-size:12px;margin-bottom:12px;min-height:16px;}
+.msBtn{width:100%;padding:13px 20px;background:#0078d4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s;}
+.msBtn:hover{background:#005ea2;}
+.msBtn svg{flex-shrink:0;}
+
+/* App */
+#app{display:none;flex-direction:column;min-height:100vh;}
+header{background:#1e3a5f;color:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:54px;box-shadow:0 2px 8px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;}
+header h1{font-size:15px;letter-spacing:.2px;}
+.headerRight{display:flex;align-items:center;gap:12px;font-size:12px;}
+.userBadge{background:rgba(255,255,255,.15);border-radius:20px;padding:4px 12px;font-weight:600;}
+header button.logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;}
+header button.logout:hover{background:rgba(255,255,255,.2);}
+
+nav{background:#fff;border-bottom:1px solid #ddd;display:flex;padding:0 20px;overflow-x:auto;}
+nav button{padding:12px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:#666;white-space:nowrap;border-bottom:3px solid transparent;transition:all .2s;}
+nav button.active{color:#1e3a5f;border-bottom-color:#1e3a5f;}
+nav button:hover:not(.active){color:#2d6a9f;background:#f5f7fa;}
+
+main{padding:20px;flex:1;max-width:1440px;width:100%;margin:0 auto;}
+
+.card{background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:18px;}
+.card h2{font-size:15px;color:#1e3a5f;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #eee;}
+
+.formGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+.formGroup{display:flex;flex-direction:column;gap:4px;}
+.formGroup label{font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.4px;line-height:1.6;}
+.formGroup input,.formGroup select{padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;transition:border-color .2s;}
+.formGroup input:focus,.formGroup select:focus{outline:none;border-color:#2d6a9f;box-shadow:0 0 0 2px rgba(45,106,159,.12);}
+.formGroup.full{grid-column:1/-1;}
+.formActions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+.btn{padding:8px 18px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-primary{background:#1e3a5f;color:#fff;}.btn-primary:hover{background:#2d6a9f;}
+.btn-success{background:#27ae60;color:#fff;}.btn-success:hover{background:#219a52;}
+.btn-danger{background:#e74c3c;color:#fff;}.btn-danger:hover{background:#c0392b;}
+.btn-secondary{background:#ecf0f1;color:#444;border:1px solid #ddd;}.btn-secondary:hover{background:#dde4ec;}
+.btn-warning{background:#f39c12;color:#fff;}.btn-warning:hover{background:#d68910;}
+.btn-info{background:#2980b9;color:#fff;}.btn-info:hover{background:#1f6390;}
+.btn-sm{padding:4px 10px;font-size:11px;}
+
+.statsRow{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;margin-bottom:18px;}
+.statCard{background:#fff;border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #2d6a9f;}
+.statCard.green{border-left-color:#27ae60;}.statCard.red{border-left-color:#e74c3c;}.statCard.orange{border-left-color:#f39c12;}
+.statCard h3{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px;line-height:1.5;}
+.statCard .val{font-size:20px;font-weight:700;color:#1e3a5f;}
+.statCard .sub{font-size:10px;color:#aaa;margin-top:2px;}
+
+.tableWrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:#1e3a5f;color:#fff;padding:9px 10px;text-align:left;font-weight:600;white-space:nowrap;line-height:1.6;}
+tbody tr{border-bottom:1px solid #f0f0f0;transition:background .12s;}
+tbody tr:hover{background:#f5f8ff;}
+tbody td{padding:8px 10px;white-space:nowrap;}
+
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap;}
+.badge-IN{background:#d5f5e3;color:#1e8449;}.badge-OUT{background:#fadbd8;color:#922b21;}
+.badge-VP{background:#e8daef;color:#6c3483;}.badge-SB{background:#d6eaf8;color:#1a5276;}
+.badge-EHC{background:#fef9e7;color:#7d6608;}.badge-WP{background:#eaf4fb;color:#1a5276;}
+.badge-YO{background:#e9f7ef;color:#1e8449;}.badge-KR{background:#fdedec;color:#922b21;}
+.badge-Admin{background:#1e3a5f;color:#fff;}.badge-Manager{background:#2980b9;color:#fff;}.badge-Staff{background:#95a5a6;color:#fff;}
+
+.filterBar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;}
+.filterBar .formGroup{min-width:140px;}
+.computed{background:#f0f7ff;font-weight:600;color:#1e3a5f;}
+.auditEntry{padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:12px;}
+.auditEntry .who{font-weight:700;color:#1e3a5f;}
+.auditEntry .when{color:#bbb;font-size:10px;}
+.auditEntry .what{color:#444;margin-top:2px;}
+
+.profit{color:#27ae60;font-weight:700;}.loss{color:#e74c3c;font-weight:700;}
+td.num{text-align:right;}
+.empty{text-align:center;color:#bbb;padding:36px;font-size:13px;}
+
+/* Print */
+@media print{
+  @page{size:A4;margin:15mm 12mm;}
+  body *{visibility:hidden;}
+  #printZone,#printZone *{visibility:visible;}
+  #printZone{position:fixed;inset:0;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#000;}
+  .print-header{margin-bottom:12px;border-bottom:2px solid #1e3a5f;padding-bottom:8px;}
+  .print-header h2{font-size:16px;color:#1e3a5f;}
+  .print-header p{font-size:10px;color:#666;margin-top:2px;}
+  .print-meta{display:flex;gap:24px;margin-bottom:10px;font-size:10px;color:#555;}
+  .print-table{width:100%;border-collapse:collapse;margin-top:6px;}
+  .print-table th{background:#1e3a5f!important;color:#fff!important;padding:6px 7px;font-size:10px;text-align:left;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-table td{padding:5px 7px;border-bottom:1px solid #ddd;font-size:10px;}
+  .print-table tr:nth-child(even) td{background:#f7f9fc;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-totals td{padding:3px 7px;}
+  .print-totals tr:last-child td{font-weight:700;font-size:12px;border-top:1px solid #333;}
+  .print-footer{margin-top:16px;font-size:9px;color:#888;text-align:right;border-top:1px solid #ddd;padding-top:6px;}
+  .no-print{display:none!important;}
+}
+#printZone{display:none;}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" style="display:flex">
+  <div class="spinner"></div>
+  <div id="loadingMsg">Initializing... / Đang khởi động...</div>
+</div>
+
+<div id="loginScreen" style="display:none">
+  <div class="loginBox">
+    <h1>📦 VP/SB PMS</h1>
+    <div class="loginSub">Product Management System · VP &amp; SB<br>Hệ thống quản lý sản phẩm</div>
+    <div class="loginErr" id="loginErr"></div>
+    <button class="msBtn" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Sign in with Microsoft 365
+      <span style="font-size:11px;opacity:.8">/ Đăng nhập M365</span>
+    </button>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>📦 VP/SB Product Management System <span style="font-size:11px;opacity:.7;font-weight:400">[PMS]</span></h1>
+    <div class="headerRight">
+      <span id="headerInfo" class="userBadge"></span>
+      <button class="logout" onclick="signOut()">Sign Out / Đăng xuất</button>
+    </div>
+  </header>
+  <nav id="mainNav"></nav>
+  <main id="mainContent"></main>
+</div>
+
+<div id="printZone"></div>
+
+<script>
+/* ══════════════════════════════════════
+   CONFIG  ← fill in your values
+══════════════════════════════════════ */
+const CLIENT_ID = '4ce6273e-9932-4057-a127-e10645e2f504';
+const TENANT_ID = '1aa4f0a5-4e73-446a-a144-54940a1ae76e';
+const SITE_URL  = 'https://vietpointglobal.sharepoint.com/sites/PMi1';
+
+const ADMIN_EMAILS = [
+  'tonylee@vietpoint.com.vn',
+  'chinhdt@vietpoint.com.vn',
+  'hoalt@vietpoint.com.vn'
+];
+const COMPANIES  = ['VP','SB'];
+const WAREHOUSES = ['EHC','WP','YO','KR'];
+const ROLES      = ['Admin','Manager','Staff'];
+
+/* ══════════════════════════════════════
+   MSAL
+══════════════════════════════════════ */
+const msalCfg = {
+  auth:{
+    clientId: CLIENT_ID,
+    authority:`https://login.microsoftonline.com/${TENANT_ID}`,
+    redirectUri: 'https://nimble-longma-8680a0.netlify.app/',
+    navigateToLoginRequestUrl: false
+  },
+  cache:{cacheLocation:'sessionStorage'}
+};
+const SCOPES = [
+  `${SITE_URL}/.default`,
+  'User.Read'
+];
+
+let msalInst, currentUser;
+
+async function initMSAL(){
+  msalInst = new msal.PublicClientApplication(msalCfg);
+  await msalInst.initialize();
+  try{
+    await msalInst.handleRedirectPromise();
+    const accounts = msalInst.getAllAccounts();
+    if(accounts.length){
+      msalInst.setActiveAccount(accounts[0]);
+      await loadCurrentUser(accounts[0]);
+    } else {
+      hide('loadingOverlay'); show('loginScreen');
+    }
+  } catch(e){
+    hide('loadingOverlay'); show('loginScreen');
+    document.getElementById('loginErr').textContent = e.message;
+  }
+}
+
+async function signIn(){
+  document.getElementById('loginErr').textContent='';
+  try{
+    const res = await msalInst.loginPopup({scopes:SCOPES});
+    msalInst.setActiveAccount(res.account);
+    await loadCurrentUser(res.account);
+  } catch(e){
+    if(e.errorCode!=='user_cancelled')
+      document.getElementById('loginErr').textContent='Sign in failed: '+e.message;
+  }
+}
+
+async function signOut(){
+  if(currentUser) await addAudit('LOGOUT','Signed out').catch(()=>{});
+  await msalInst.logoutPopup();
+  currentUser=null;
+  hide('app'); show('loginScreen');
+}
+
+async function getToken(){
+  const account = msalInst.getActiveAccount();
+  if(!account) throw new Error('Not signed in');
+  try{
+    const r = await msalInst.acquireTokenSilent({scopes:SCOPES,account});
+    return r.accessToken;
+  } catch{
+    const r = await msalInst.acquireTokenPopup({scopes:SCOPES});
+    return r.accessToken;
+  }
+}
+
+async function loadCurrentUser(account){
+  loading('Verifying access... / Đang xác minh...');
+  try{
+    const email = account.username.toLowerCase();
+    const name  = account.name || email;
+
+    let rec = await spGetFirst('PMI_Users',`$filter=Email eq '${encodeURIComponent(email)}'`);
+
+    if(!rec && ADMIN_EMAILS.includes(email)){
+      await spPost('PMI_Users',{Title:name,Email:email,Company:'VP',Role:'Admin',Active:true});
+      rec = {Title:name,Email:email,Company:'VP',Role:'Admin',Active:true};
+    }
+
+    if(!rec){
+      hide('loadingOverlay'); show('loginScreen');
+      document.getElementById('loginErr').textContent='Access denied. Contact admin. / Liên hệ quản trị viên.';
+      return;
+    }
+    if(!rec.Active){
+      hide('loadingOverlay'); show('loginScreen');
+      document.getElementById('loginErr').textContent='Account disabled. / Tài khoản bị vô hiệu.';
+      return;
+    }
+
+    currentUser={name:rec.Title||name, email, company:rec.Company||'VP', role:rec.Role||'Staff', spId:rec.Id};
+    hide('loginScreen');
+    const app=document.getElementById('app');
+    app.style.display='flex'; app.style.flexDirection='column';
+    document.getElementById('headerInfo').textContent=`${currentUser.name} · ${currentUser.company} · ${currentUser.role}`;
+    buildNav();
+    await addAudit('LOGIN','Signed in');
+    await showPage('dashboard');
+  } catch(e){
+    hide('loadingOverlay'); show('loginScreen');
+    document.getElementById('loginErr').textContent='Error: '+e.message;
+  }
+}
+
+/* ══════════════════════════════════════
+   SHAREPOINT REST API
+══════════════════════════════════════ */
+async function spReq(path, opts={}){
+  const token = await getToken();
+  const res = await fetch(`${SITE_URL}/_api/${path}`,{
+    ...opts,
+    headers:{
+      'Authorization':`Bearer ${token}`,
+      'Accept':'application/json;odata=nometadata',
+      'Content-Type':'application/json;odata=nometadata',
+      ...(opts.headers||{})
+    }
+  });
+  if(!res.ok && res.status!==204){
+    const txt=await res.text();
+    let msg=res.status;
+    try{msg=JSON.parse(txt)?.error?.message?.value||txt;}catch{}
+    throw new Error(`SharePoint ${res.status}: ${msg}`);
+  }
+  if(res.status===204) return null;
+  return res.json();
+}
+
+async function spGet(list,q=''){
+  const d=await spReq(`lists/getbytitle('${list}')/items?$top=2000&${q}`);
+  return d?.value||[];
+}
+async function spGetFirst(list,q=''){
+  const d=await spReq(`lists/getbytitle('${list}')/items?$top=1&${q}`);
+  return d?.value?.[0]||null;
+}
+async function spPost(list,body){
+  return spReq(`lists/getbytitle('${list}')/items`,{method:'POST',body:JSON.stringify(body)});
+}
+async function spPatch(list,id,body){
+  return spReq(`lists/getbytitle('${list}')/items(${id})`,{
+    method:'POST', headers:{'X-HTTP-Method':'MERGE','If-Match':'*'}, body:JSON.stringify(body)
+  });
+}
+async function spDelete(list,id){
+  return spReq(`lists/getbytitle('${list}')/items(${id})`,{
+    method:'POST', headers:{'X-HTTP-Method':'DELETE','If-Match':'*'}
+  });
+}
+
+/* ══════════════════════════════════════
+   CACHE + DATA
+══════════════════════════════════════ */
+const _c={};
+function bust(...keys){keys.forEach(k=>delete _c[k]);}
+
+async function getTxs()   { if(!_c.txs)  _c.txs  = await spGet('PMI_Transactions','$orderby=TxDate desc,Created desc'); return _c.txs; }
+async function getProds() { if(!_c.prods)_c.prods = await spGet('PMI_Products','$orderby=Title asc'); return _c.prods; }
+async function getUsers() { return spGet('PMI_Users','$orderby=Title asc'); }
+
+async function addAudit(action,detail){
+  await spPost('PMI_Audit',{
+    Title:action, Detail:detail,
+    UserName:currentUser?.name||'System', UserEmail:currentUser?.email||'',
+    Company:currentUser?.company||'', Role:currentUser?.role||''
+  });
+}
+
+/* ══════════════════════════════════════
+   UTILS
+══════════════════════════════════════ */
+function uid(){ return 'T'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+function fmt(n){ return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDt(ts){ if(!ts) return '-'; const d=new Date(ts); return d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'2-digit'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function show(id){ document.getElementById(id).style.display=''; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+function loading(msg='Loading...'){ document.getElementById('loadingMsg').textContent=msg; document.getElementById('loadingOverlay').style.display='flex'; }
+function doneLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+
+function computeInv(txs,fc,fw){
+  const inv={}; WAREHOUSES.forEach(w=>{inv[w]={};});
+  (txs||[]).forEach(t=>{
+    if(fc&&t.Company!==fc) return;
+    if(fw&&t.Warehouse!==fw) return;
+    if(!t.Warehouse||!t.ProductName) return;
+    if(!inv[t.Warehouse]) inv[t.Warehouse]={};
+    inv[t.Warehouse][t.ProductName]=(inv[t.Warehouse][t.ProductName]||0)+(t.TxType==='IN'?1:-1)*(t.Qty||0);
+  });
+  return inv;
+}
+
+/* ══════════════════════════════════════
+   NAV
+══════════════════════════════════════ */
+const PAGES=[
+  {id:'dashboard',en:'Dashboard',vn:'Tổng quan'},
+  {id:'inbound',  en:'Inbound',  vn:'Nhập kho'},
+  {id:'outbound', en:'Outbound', vn:'Xuất kho'},
+  {id:'inventory',en:'Inventory',vn:'Tồn kho'},
+  {id:'products', en:'Products', vn:'Sản phẩm'},
+  {id:'transactions',en:'Transactions',vn:'Giao dịch'},
+  {id:'users',    en:'Users',    vn:'Người dùng',adminOnly:true},
+  {id:'audit',    en:'Audit Log',vn:'Lịch sử'},
+];
+function buildNav(){
+  document.getElementById('mainNav').innerHTML=PAGES
+    .filter(p=>!p.adminOnly||currentUser.role==='Admin')
+    .map(p=>`<button id="nav_${p.id}" onclick="showPage('${p.id}')">${p.en} <span style="font-size:9px;opacity:.6">/ ${p.vn}</span></button>`)
+    .join('');
+}
+async function showPage(p){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('nav_'+p); if(btn) btn.classList.add('active');
+  loading();
+  const mc=document.getElementById('mainContent');
+  try{
+    const map={dashboard,inbound,outbound,inventory,products,transactions,users,audit};
+    const fn=map[p]||(async function(){return '';});
+    mc.innerHTML=await fn();
+    if(p==='inbound')  bindInbound();
+    if(p==='outbound') bindOutbound();
+  } catch(e){
+    mc.innerHTML=`<div class="card"><div class="empty">Error: ${e.message}</div></div>`;
+  } finally{ doneLoading(); }
+}
+
+/* ══════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════ */
+async function dashboard(){
+  const txs=await getTxs();
+  const ins=txs.filter(t=>t.TxType==='IN'), outs=txs.filter(t=>t.TxType==='OUT');
+  const totPurch=ins.reduce((s,t)=>s+(t.TotalPurchase||0),0);
+  const totFeeIn=ins.reduce((s,t)=>s+(t.InboundFee||0),0);
+  const totSales=outs.reduce((s,t)=>s+(t.TotalSales||0),0);
+  const totFeeOut=outs.reduce((s,t)=>s+(t.OutboundFee||0),0);
+  const profit=totSales-totPurch-totFeeIn-totFeeOut;
+  const inv=computeInv(txs);
+  const totalStock=Object.values(inv).reduce((s,w)=>s+Object.values(w).reduce((s2,v)=>s2+v,0),0);
+  const recent=txs.slice(0,10);
+  const stockRows=Object.entries(inv).flatMap(([wh,ps])=>Object.entries(ps).filter(([,q])=>q>0).map(([pn,q])=>`<tr><td><span class="badge badge-${wh}">${wh}</span></td><td>${pn}</td><td class="num"><strong>${q.toLocaleString()}</strong></td></tr>`)).join('');
+  return `
+  <div class="statsRow">
+    <div class="statCard"><h3>Total Inbound Value<span class="vn">Tổng giá trị nhập</span></h3><div class="val">$${fmt(totPurch)}</div><div class="sub">${ins.length} transactions</div></div>
+    <div class="statCard green"><h3>Total Sales<span class="vn">Tổng doanh thu</span></h3><div class="val">$${fmt(totSales)}</div><div class="sub">${outs.length} transactions</div></div>
+    <div class="statCard ${profit>=0?'green':'red'}"><h3>Gross Profit/Loss<span class="vn">Lãi/lỗ gộp</span></h3><div class="val ${profit>=0?'profit':'loss'}">$${fmt(profit)}</div><div class="sub">Sales − Purchase − Fees</div></div>
+    <div class="statCard orange"><h3>Total Stock<span class="vn">Tổng tồn kho</span></h3><div class="val">${totalStock.toLocaleString()}</div><div class="sub">All warehouses</div></div>
+    <div class="statCard"><h3>Total Fees<span class="vn">Tổng phí</span></h3><div class="val">$${fmt(totFeeIn+totFeeOut)}</div><div class="sub">In $${fmt(totFeeIn)} · Out $${fmt(totFeeOut)}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
+    <div class="card">
+      <h2>Recent Transactions <span class="vn">Giao dịch gần đây</span></h2>
+      ${recent.length?`<div class="tableWrap"><table>
+        <thead><tr><th>Date<span class="vn">Ngày</span></th><th>Type<span class="vn">Loại</span></th><th>Product<span class="vn">Sản phẩm</span></th><th>Co.</th><th>WH</th><th>Qty</th><th>Amount</th><th>By<span class="vn">Người lập</span></th></tr></thead>
+        <tbody>${recent.map(t=>`<tr>
+          <td>${t.TxDate||'-'}</td>
+          <td><span class="badge badge-${t.TxType}">${t.TxType}</span></td>
+          <td>${t.ProductName||'-'}</td>
+          <td><span class="badge badge-${t.Company}">${t.Company}</span></td>
+          <td><span class="badge badge-${t.Warehouse}">${t.Warehouse}</span></td>
+          <td class="num">${Number(t.Qty||0).toLocaleString()}</td>
+          <td class="num">$${fmt(t.TxType==='IN'?t.TotalPurchase:t.TotalSales)}</td>
+          <td>${t.CreatedByName||'-'}</td>
+        </tr>`).join('')}</tbody></table></div>`
+      :'<div class="empty">No transactions yet / Chưa có giao dịch</div>'}
+    </div>
+    <div class="card">
+      <h2>Stock by Warehouse <span class="vn">Tồn kho theo kho</span></h2>
+      <div class="tableWrap"><table>
+        <thead><tr><th>WH</th><th>Product</th><th>Stock</th></tr></thead>
+        <tbody>${stockRows||'<tr><td colspan="3" class="empty">No stock</td></tr>'}</tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════
+   PRODUCTS
+══════════════════════════════════════ */
+async function products(){
+  const prods=await getProds();
+  return `
+  <div class="card">
+    <h2>Add Product <span class="vn">Thêm sản phẩm</span></h2>
+    <div class="formGrid">
+      <div class="formGroup"><label>Code <span class="vn">Mã SP</span></label><input id="pCode" placeholder="PROD-001"></div>
+      <div class="formGroup"><label>Name <span class="vn">Tên SP</span></label><input id="pName" placeholder="Product name"></div>
+      <div class="formGroup"><label>Category <span class="vn">Danh mục</span></label><input id="pCat" placeholder="e.g. Electronics"></div>
+      <div class="formGroup"><label>Unit <span class="vn">Đơn vị</span></label><input id="pUnit" placeholder="pcs, kg, box…"></div>
+      <div class="formGroup full"><label>Description <span class="vn">Mô tả</span></label><input id="pDesc" placeholder="Optional"></div>
+    </div>
+    <div class="formActions"><button class="btn btn-primary" onclick="addProduct()">+ Add Product</button></div>
+  </div>
+  <div class="card">
+    <h2>Product List <span class="vn">Danh sách sản phẩm</span> <span style="color:#aaa;font-size:12px">(${prods.length})</span></h2>
+    ${prods.length?`<div class="tableWrap"><table>
+      <thead><tr><th>Code</th><th>Name<span class="vn">Tên</span></th><th>Category</th><th>Unit</th><th>Description</th><th>Created By</th><th></th></tr></thead>
+      <tbody>${prods.map(p=>`<tr>
+        <td><strong>${p.Code||'-'}</strong></td><td>${p.Title||'-'}</td><td>${p.Category||'-'}</td>
+        <td>${p.Unit||'-'}</td><td>${p.Description||'-'}</td>
+        <td>${p.CreatedByName||'-'}<div style="font-size:10px;color:#aaa">${p.CreatedByEmail||''}</div></td>
+        <td>${currentUser.role!=='Staff'?`<button class="btn btn-danger btn-sm" onclick="delProduct(${p.Id})">Delete</button>`:''}</td>
+      </tr>`).join('')}</tbody></table></div>`
+    :'<div class="empty">No products / Chưa có sản phẩm</div>'}
+  </div>`;
+}
+async function addProduct(){
+  const code=document.getElementById('pCode').value.trim(), name=document.getElementById('pName').value.trim();
+  if(!code||!name){alert('Code and Name required.');return;}
+  loading('Saving...');
+  try{
+    await spPost('PMI_Products',{Title:name,Code:code,Category:document.getElementById('pCat').value.trim(),Unit:document.getElementById('pUnit').value.trim(),Description:document.getElementById('pDesc').value.trim(),CreatedByName:currentUser.name,CreatedByEmail:currentUser.email});
+    bust('prods'); await addAudit('ADD PRODUCT',`${name} (${code})`); await showPage('products');
+  }catch(e){alert('Error: '+e.message);doneLoading();}
+}
+async function delProduct(id){
+  if(!confirm('Delete this product?')) return;
+  loading('Deleting...');
+  try{await spDelete('PMI_Products',id);bust('prods');await addAudit('DELETE PRODUCT','ID:'+id);await showPage('products');}
+  catch(e){alert('Error: '+e.message);doneLoading();}
+}
+
+/* ══════════════════════════════════════
+   INBOUND
+══════════════════════════════════════ */
+async function inbound(){
+  const [prods,txs]=await Promise.all([getProds(),getTxs()]);
+  const opts=prods.map(p=>`<option value="${p.Id}">${p.Code||''} – ${p.Title||''}</option>`).join('');
+  const rows=txs.filter(t=>t.TxType==='IN').slice(0,15);
+  return `
+  <div class="card">
+    <h2>Inbound — Goods Receipt <span class="vn">Nhập kho</span></h2>
+    <div class="formGrid">
+      <div class="formGroup"><label>Date <span class="vn">Ngày</span></label><input type="date" id="ib_date" value="${today()}"></div>
+      <div class="formGroup"><label>Company <span class="vn">Công ty</span></label><select id="ib_co">${COMPANIES.map(c=>`<option ${c===currentUser.company?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Warehouse <span class="vn">Kho</span></label><select id="ib_wh">${WAREHOUSES.map(w=>`<option>${w}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Product <span class="vn">Sản phẩm</span></label><select id="ib_prod" onchange="calcIB()">${prods.length?opts:'<option>— Add products first —</option>'}</select></div>
+      <div class="formGroup"><label>Quantity <span class="vn">Số lượng</span></label><input type="number" id="ib_qty" min="1" value="1" oninput="calcIB()"></div>
+      <div class="formGroup"><label>Unit Purchase Price ($) <span class="vn">Đơn giá mua</span></label><input type="number" id="ib_uPrice" min="0" step="0.01" placeholder="0.00" oninput="calcIB()"></div>
+      <div class="formGroup"><label>Inbound Fee ($) <span class="vn">Phí nhập kho</span></label><input type="number" id="ib_fee" min="0" step="0.01" placeholder="0.00" oninput="calcIB()"></div>
+      <div class="formGroup"><label>Unit Cost incl. Fee <span style="color:#2d6a9f;font-size:9px">AUTO</span></label><input type="number" id="ib_uCostFee" class="computed" readonly></div>
+      <div class="formGroup"><label>Total Purchase ($) <span style="color:#2d6a9f;font-size:9px">AUTO</span></label><input type="number" id="ib_total" class="computed" readonly></div>
+      <div class="formGroup"><label>Supplier <span class="vn">Nhà cung cấp</span></label><input id="ib_supplier" placeholder="Supplier name"></div>
+      <div class="formGroup"><label>Invoice / Ref # <span class="vn">Số hóa đơn</span></label><input id="ib_ref" placeholder="INV-001"></div>
+      <div class="formGroup full"><label>Remarks <span class="vn">Ghi chú</span></label><input id="ib_remarks" placeholder="Optional notes"></div>
+    </div>
+    <div class="formActions">
+      <button class="btn btn-success" onclick="submitIB()">✔ Record Inbound / Lưu nhập kho</button>
+      <button class="btn btn-secondary" onclick="showPage('inbound')">Clear</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Recent Inbound <span class="vn">Nhập kho gần đây</span>
+      <button class="btn btn-info btn-sm no-print" style="float:right;margin-top:-4px" onclick="printIB()">🖨 Print / In</button>
+    </h2>
+    ${tblIB(rows)}
+  </div>`;
+}
+function calcIB(){
+  const qty=parseFloat(document.getElementById('ib_qty')?.value)||0;
+  const uP=parseFloat(document.getElementById('ib_uPrice')?.value)||0;
+  const fee=parseFloat(document.getElementById('ib_fee')?.value)||0;
+  const tot=qty*uP; const uF=qty>0?(tot+fee)/qty:0;
+  if(document.getElementById('ib_uCostFee')) document.getElementById('ib_uCostFee').value=uF.toFixed(4);
+  if(document.getElementById('ib_total'))    document.getElementById('ib_total').value=tot.toFixed(2);
+}
+function bindInbound(){calcIB();}
+
+async function submitIB(){
+  const prods=await getProds();
+  const prod=prods.find(p=>p.Id===parseInt(document.getElementById('ib_prod').value));
+  const qty=parseFloat(document.getElementById('ib_qty').value);
+  const uP=parseFloat(document.getElementById('ib_uPrice').value)||0;
+  const fee=parseFloat(document.getElementById('ib_fee').value)||0;
+  const tot=qty*uP; const uF=qty>0?(tot+fee)/qty:0;
+  if(!prod){alert('Select a product.');return;}
+  if(!qty||qty<=0){alert('Enter valid quantity.');return;}
+  loading('Saving...');
+  try{
+    await spPost('PMI_Transactions',{
+      Title:uid(), TxType:'IN',
+      TxDate:document.getElementById('ib_date').value,
+      Company:document.getElementById('ib_co').value,
+      Warehouse:document.getElementById('ib_wh').value,
+      ProductName:prod.Title, ProductCode:prod.Code||'',
+      Qty:qty, UnitPrice:uP, InboundFee:fee, UnitCostIncFee:uF, TotalPurchase:tot,
+      Supplier:document.getElementById('ib_supplier').value.trim(),
+      Ref:document.getElementById('ib_ref').value.trim(),
+      Remarks:document.getElementById('ib_remarks').value.trim(),
+      CreatedByName:currentUser.name, CreatedByEmail:currentUser.email
+    });
+    bust('txs');
+    await addAudit('INBOUND',`${prod.Title} ×${qty} | $${fmt(tot)} + fee $${fmt(fee)}`);
+    alert(`✔ Inbound recorded!\n${prod.Title} × ${qty}`);
+    await showPage('inbound');
+  }catch(e){alert('Error: '+e.message);doneLoading();}
+}
+
+function tblIB(rows){
+  if(!rows.length) return '<div class="empty">No inbound transactions / Chưa có phiếu nhập</div>';
+  return `<div class="tableWrap"><table>
+    <thead><tr>
+      <th>Date<span class="vn">Ngày</span></th><th>Co.</th><th>WH</th>
+      <th>Product<span class="vn">Sản phẩm</span></th><th>Qty</th>
+      <th>Unit Price<span class="vn">Đơn giá</span></th><th>Fee<span class="vn">Phí</span></th>
+      <th>Unit+Fee</th><th>Total Purchase<span class="vn">Tổng mua</span></th>
+      <th>Supplier<span class="vn">NCC</span></th><th>Ref</th><th>By<span class="vn">Người lập</span></th>
+    </tr></thead>
+    <tbody>${rows.map(t=>`<tr>
+      <td>${t.TxDate||'-'}</td>
+      <td><span class="badge badge-${t.Company}">${t.Company}</span></td>
+      <td><span class="badge badge-${t.Warehouse}">${t.Warehouse}</span></td>
+      <td>${t.ProductName||'-'}</td>
+      <td class="num">${Number(t.Qty||0).toLocaleString()}</td>
+      <td class="num">$${fmt(t.UnitPrice)}</td>
+      <td class="num">$${fmt(t.InboundFee)}</td>
+      <td class="num">$${fmt(t.UnitCostIncFee)}</td>
+      <td class="num"><strong>$${fmt(t.TotalPurchase)}</strong></td>
+      <td>${t.Supplier||'-'}</td><td>${t.Ref||'-'}</td>
+      <td>${t.CreatedByName||'-'}<div style="font-size:10px;color:#aaa">${t.CreatedByEmail||''}</div></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ══════════════════════════════════════
+   OUTBOUND
+══════════════════════════════════════ */
+async function outbound(){
+  const [prods,txs]=await Promise.all([getProds(),getTxs()]);
+  const opts=prods.map(p=>`<option value="${p.Id}">${p.Code||''} – ${p.Title||''}</option>`).join('');
+  const rows=txs.filter(t=>t.TxType==='OUT').slice(0,15);
+  return `
+  <div class="card">
+    <h2>Outbound — Goods Issue <span class="vn">Xuất kho</span></h2>
+    <div class="formGrid">
+      <div class="formGroup"><label>Date <span class="vn">Ngày</span></label><input type="date" id="ob_date" value="${today()}"></div>
+      <div class="formGroup"><label>Company <span class="vn">Công ty</span></label><select id="ob_co">${COMPANIES.map(c=>`<option ${c===currentUser.company?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Warehouse <span class="vn">Kho</span></label><select id="ob_wh">${WAREHOUSES.map(w=>`<option>${w}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Product <span class="vn">Sản phẩm</span></label><select id="ob_prod">${prods.length?opts:'<option>— Add products first —</option>'}</select></div>
+      <div class="formGroup"><label>Quantity <span class="vn">Số lượng</span></label><input type="number" id="ob_qty" min="1" value="1" oninput="calcOB()"></div>
+      <div class="formGroup"><label>Unit Sales Price ($) <span class="vn">Đơn giá bán</span></label><input type="number" id="ob_uSales" min="0" step="0.01" placeholder="0.00" oninput="calcOB()"></div>
+      <div class="formGroup"><label>Outbound Fee ($) <span class="vn">Phí xuất kho</span></label><input type="number" id="ob_fee" min="0" step="0.01" placeholder="0.00" oninput="calcOB()"></div>
+      <div class="formGroup"><label>Total Sales ($) <span style="color:#2d6a9f;font-size:9px">AUTO</span></label><input type="number" id="ob_total" class="computed" readonly></div>
+      <div class="formGroup"><label>Net Revenue ($) <span style="color:#2d6a9f;font-size:9px">AUTO</span></label><input type="number" id="ob_net" class="computed" readonly></div>
+      <div class="formGroup"><label>Customer <span class="vn">Khách hàng</span></label><input id="ob_customer" placeholder="Customer name"></div>
+      <div class="formGroup"><label>Invoice / Ref # <span class="vn">Số hóa đơn</span></label><input id="ob_ref" placeholder="INV-001"></div>
+      <div class="formGroup full"><label>Remarks <span class="vn">Ghi chú</span></label><input id="ob_remarks" placeholder="Optional notes"></div>
+    </div>
+    <div class="formActions">
+      <button class="btn btn-danger" onclick="submitOB()">✔ Record Outbound / Lưu xuất kho</button>
+      <button class="btn btn-secondary" onclick="showPage('outbound')">Clear</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Recent Outbound <span class="vn">Xuất kho gần đây</span>
+      <button class="btn btn-info btn-sm no-print" style="float:right;margin-top:-4px" onclick="printOB()">🖨 Print / In</button>
+    </h2>
+    ${tblOB(rows)}
+  </div>`;
+}
+function calcOB(){
+  const qty=parseFloat(document.getElementById('ob_qty')?.value)||0;
+  const uS=parseFloat(document.getElementById('ob_uSales')?.value)||0;
+  const fee=parseFloat(document.getElementById('ob_fee')?.value)||0;
+  const tot=qty*uS;
+  if(document.getElementById('ob_total')) document.getElementById('ob_total').value=tot.toFixed(2);
+  if(document.getElementById('ob_net'))   document.getElementById('ob_net').value=(tot-fee).toFixed(2);
+}
+function bindOutbound(){calcOB();}
+
+async function submitOB(){
+  const prods=await getProds();
+  const prod=prods.find(p=>p.Id===parseInt(document.getElementById('ob_prod').value));
+  const qty=parseFloat(document.getElementById('ob_qty').value);
+  const uS=parseFloat(document.getElementById('ob_uSales').value)||0;
+  const fee=parseFloat(document.getElementById('ob_fee').value)||0;
+  const tot=qty*uS;
+  const wh=document.getElementById('ob_wh').value;
+  const co=document.getElementById('ob_co').value;
+  if(!prod){alert('Select a product.');return;}
+  if(!qty||qty<=0){alert('Enter valid quantity.');return;}
+  const txs=await getTxs();
+  const inv=computeInv(txs);
+  const stock=(inv[wh]&&inv[wh][prod.Title])||0;
+  if(qty>stock){alert(`⚠ Insufficient stock!\nAvailable at ${wh}: ${stock.toLocaleString()} units`);return;}
+  loading('Saving...');
+  try{
+    await spPost('PMI_Transactions',{
+      Title:uid(), TxType:'OUT',
+      TxDate:document.getElementById('ob_date').value,
+      Company:co, Warehouse:wh,
+      ProductName:prod.Title, ProductCode:prod.Code||'',
+      Qty:qty, UnitSalesPrice:uS, OutboundFee:fee, TotalSales:tot, NetRevenue:tot-fee,
+      Customer:document.getElementById('ob_customer').value.trim(),
+      Ref:document.getElementById('ob_ref').value.trim(),
+      Remarks:document.getElementById('ob_remarks').value.trim(),
+      CreatedByName:currentUser.name, CreatedByEmail:currentUser.email
+    });
+    bust('txs');
+    await addAudit('OUTBOUND',`${prod.Title} ×${qty} from ${wh}(${co}) | $${fmt(tot)} − fee $${fmt(fee)}`);
+    alert(`✔ Outbound recorded!\n${prod.Title} × ${qty}`);
+    await showPage('outbound');
+  }catch(e){alert('Error: '+e.message);doneLoading();}
+}
+
+function tblOB(rows){
+  if(!rows.length) return '<div class="empty">No outbound transactions / Chưa có phiếu xuất</div>';
+  return `<div class="tableWrap"><table>
+    <thead><tr>
+      <th>Date<span class="vn">Ngày</span></th><th>Co.</th><th>WH</th>
+      <th>Product<span class="vn">Sản phẩm</span></th><th>Qty</th>
+      <th>Unit Price<span class="vn">Đơn giá</span></th><th>Fee<span class="vn">Phí</span></th>
+      <th>Total Sales<span class="vn">Tổng bán</span></th><th>Net Revenue<span class="vn">Doanh thu thuần</span></th>
+      <th>Customer<span class="vn">KH</span></th><th>Ref</th><th>By<span class="vn">Người lập</span></th>
+    </tr></thead>
+    <tbody>${rows.map(t=>`<tr>
+      <td>${t.TxDate||'-'}</td>
+      <td><span class="badge badge-${t.Company}">${t.Company}</span></td>
+      <td><span class="badge badge-${t.Warehouse}">${t.Warehouse}</span></td>
+      <td>${t.ProductName||'-'}</td>
+      <td class="num">${Number(t.Qty||0).toLocaleString()}</td>
+      <td class="num">$${fmt(t.UnitSalesPrice)}</td>
+      <td class="num">$${fmt(t.OutboundFee)}</td>
+      <td class="num"><strong>$${fmt(t.TotalSales)}</strong></td>
+      <td class="num ${(t.NetRevenue||0)>=0?'profit':'loss'}">$${fmt(t.NetRevenue)}</td>
+      <td>${t.Customer||'-'}</td><td>${t.Ref||'-'}</td>
+      <td>${t.CreatedByName||'-'}<div style="font-size:10px;color:#aaa">${t.CreatedByEmail||''}</div></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ══════════════════════════════════════
+   INVENTORY
+══════════════════════════════════════ */
+async function inventory(){
+  const txs=await getTxs();
+  return `
+  <div class="card">
+    <h2>Inventory — Current Stock <span class="vn">Tồn kho hiện tại</span>
+      <button class="btn btn-info btn-sm no-print" style="float:right;margin-top:-4px" onclick="printInv()">🖨 Print / In</button>
+    </h2>
+    <div class="filterBar">
+      <div class="formGroup"><label>Company</label><select id="inv_co" onchange="refInv()"><option value="">All</option>${COMPANIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Warehouse <span class="vn">Kho</span></label><select id="inv_wh" onchange="refInv()"><option value="">All</option>${WAREHOUSES.map(w=>`<option>${w}</option>`).join('')}</select></div>
+    </div>
+    <div id="invWrap">${renderInv(txs,'','')}</div>
+  </div>`;
+}
+function refInv(){
+  getTxs().then(txs=>{
+    document.getElementById('invWrap').innerHTML=renderInv(txs,document.getElementById('inv_co').value,document.getElementById('inv_wh').value);
+  });
+}
+function renderInv(txs,fc,fw){
+  const inv=computeInv(txs,fc||null,fw||null);
+  const rows=[];
+  WAREHOUSES.forEach(wh=>{if(fw&&wh!==fw)return;Object.entries(inv[wh]||{}).forEach(([pn,qty])=>{if(qty!==0)rows.push({wh,pn,qty});});});
+  if(!rows.length) return '<div class="empty">No stock / Không có tồn kho</div>';
+  return `<div class="tableWrap"><table>
+    <thead><tr><th>Warehouse<span class="vn">Kho</span></th><th>Product<span class="vn">Sản phẩm</span></th><th>Stock<span class="vn">Tồn kho</span></th><th>Status</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td><span class="badge badge-${r.wh}">${r.wh}</span></td>
+      <td>${r.pn}</td>
+      <td class="num"><strong>${r.qty.toLocaleString()}</strong></td>
+      <td><span class="badge badge-${r.qty>0?'IN':'OUT'}">${r.qty>0?'In Stock / Còn hàng':'⚠ Negative'}</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ══════════════════════════════════════
+   TRANSACTIONS
+══════════════════════════════════════ */
+async function transactions(){
+  const txs=await getTxs();
+  return `
+  <div class="card">
+    <h2>All Transactions <span class="vn">Tất cả giao dịch</span>
+      <button class="btn btn-info btn-sm no-print" style="float:right;margin-top:-4px" onclick="printTx()">🖨 Print / In</button>
+    </h2>
+    <div class="filterBar">
+      <div class="formGroup"><label>Type</label><select id="tx_type" onchange="refTx()"><option value="">All</option><option value="IN">Inbound</option><option value="OUT">Outbound</option></select></div>
+      <div class="formGroup"><label>Company</label><select id="tx_co" onchange="refTx()"><option value="">All</option>${COMPANIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Warehouse</label><select id="tx_wh" onchange="refTx()"><option value="">All</option>${WAREHOUSES.map(w=>`<option>${w}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>From <span class="vn">Từ ngày</span></label><input type="date" id="tx_from" onchange="refTx()"></div>
+      <div class="formGroup"><label>To <span class="vn">Đến ngày</span></label><input type="date" id="tx_to" onchange="refTx()"></div>
+      <div class="formGroup"><label>Search <span class="vn">Tìm kiếm</span></label><input id="tx_q" placeholder="Product / Supplier / Customer" oninput="refTx()"></div>
+      <div class="formGroup" style="justify-content:flex-end;padding-top:14px"><button class="btn btn-secondary" onclick="clrTx()">Clear</button></div>
+    </div>
+    <div id="txWrap">${renderTx(txs,{})}</div>
+  </div>`;
+}
+function clrTx(){['tx_type','tx_co','tx_wh','tx_from','tx_to','tx_q'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});refTx();}
+function refTx(){getTxs().then(txs=>document.getElementById('txWrap').innerHTML=renderTx(txs,getTxF()));}
+function getTxF(){return{type:document.getElementById('tx_type')?.value,co:document.getElementById('tx_co')?.value,wh:document.getElementById('tx_wh')?.value,from:document.getElementById('tx_from')?.value,to:document.getElementById('tx_to')?.value,q:document.getElementById('tx_q')?.value?.toLowerCase()};}
+function filtTx(txs,f){
+  let r=txs;
+  if(f.type) r=r.filter(t=>t.TxType===f.type);
+  if(f.co)   r=r.filter(t=>t.Company===f.co);
+  if(f.wh)   r=r.filter(t=>t.Warehouse===f.wh);
+  if(f.from) r=r.filter(t=>(t.TxDate||'')>=f.from);
+  if(f.to)   r=r.filter(t=>(t.TxDate||'')<=f.to);
+  if(f.q)    r=r.filter(t=>[t.ProductName,t.Supplier,t.Customer,t.Ref,t.CreatedByName,t.CreatedByEmail].some(v=>v?.toLowerCase().includes(f.q)));
+  return r;
+}
+function renderTx(allTxs,f){
+  const txs=filtTx(allTxs,f);
+  if(!txs.length) return '<div class="empty">No transactions found / Không tìm thấy giao dịch</div>';
+  const tI=txs.filter(t=>t.TxType==='IN').reduce((s,t)=>s+(t.TotalPurchase||0),0);
+  const tO=txs.filter(t=>t.TxType==='OUT').reduce((s,t)=>s+(t.TotalSales||0),0);
+  return `<div class="tableWrap"><table>
+    <thead><tr>
+      <th>Date<span class="vn">Ngày</span></th><th>Type</th><th>Co.</th><th>WH</th>
+      <th>Product<span class="vn">Sản phẩm</span></th><th>Qty</th><th>Unit Price</th>
+      <th>Fee<span class="vn">Phí</span></th><th>Total<span class="vn">Tổng</span></th>
+      <th>Counterpart<span class="vn">Đối tác</span></th><th>Ref</th><th>Remarks<span class="vn">Ghi chú</span></th><th>By<span class="vn">Người lập</span></th>
+    </tr></thead>
+    <tbody>${txs.map(t=>`<tr>
+      <td>${t.TxDate||'-'}</td>
+      <td><span class="badge badge-${t.TxType}">${t.TxType}</span></td>
+      <td><span class="badge badge-${t.Company}">${t.Company}</span></td>
+      <td><span class="badge badge-${t.Warehouse}">${t.Warehouse}</span></td>
+      <td>${t.ProductName||'-'}</td>
+      <td class="num">${Number(t.Qty||0).toLocaleString()}</td>
+      <td class="num">$${fmt(t.TxType==='IN'?t.UnitPrice:t.UnitSalesPrice)}</td>
+      <td class="num">$${fmt(t.TxType==='IN'?t.InboundFee:t.OutboundFee)}</td>
+      <td class="num"><strong>$${fmt(t.TxType==='IN'?t.TotalPurchase:t.TotalSales)}</strong></td>
+      <td>${t.Supplier||t.Customer||'-'}</td><td>${t.Ref||'-'}</td><td>${t.Remarks||'-'}</td>
+      <td>${t.CreatedByName||'-'}<div style="font-size:10px;color:#aaa">${t.CreatedByEmail||''}</div></td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr style="background:#f0f4f8;font-weight:700">
+      <td colspan="8" style="text-align:right;padding:8px 10px">Subtotals / Tổng phụ:</td>
+      <td class="num" style="padding:8px 10px">IN: $${fmt(tI)}<br>OUT: $${fmt(tO)}</td>
+      <td colspan="4"></td>
+    </tr></tfoot>
+  </table></div>`;
+}
+
+/* ══════════════════════════════════════
+   USERS (Admin only)
+══════════════════════════════════════ */
+async function users(){
+  if(currentUser.role!=='Admin') return '<div class="card"><div class="empty">Access denied / Không có quyền</div></div>';
+  const list=await getUsers();
+  return `
+  <div class="card">
+    <h2>Add User <span class="vn">Thêm người dùng</span></h2>
+    <div class="formGrid">
+      <div class="formGroup"><label>Full Name <span class="vn">Họ và tên</span></label><input id="u_name" placeholder="Nguyen Van A"></div>
+      <div class="formGroup"><label>Email (Microsoft 365)</label><input id="u_email" type="email" placeholder="user@vietpoint.com.vn"></div>
+      <div class="formGroup"><label>Company <span class="vn">Công ty</span></label><select id="u_co">${COMPANIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="formGroup"><label>Role <span class="vn">Vai trò</span></label><select id="u_role">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:8px">💡 User logs in with their Microsoft 365 account — no separate password needed. / Người dùng đăng nhập bằng tài khoản M365.</p>
+    <div class="formActions"><button class="btn btn-primary" onclick="addUser()">+ Add User</button></div>
+  </div>
+  <div class="card">
+    <h2>User List <span class="vn">Danh sách người dùng</span></h2>
+    <div class="tableWrap"><table>
+      <thead><tr><th>Name<span class="vn">Tên</span></th><th>Email</th><th>Co.</th><th>Role<span class="vn">Vai trò</span></th><th>Status<span class="vn">Trạng thái</span></th><th>Actions</th></tr></thead>
+      <tbody>${list.map(u=>`<tr>
+        <td><strong>${u.Title||'-'}</strong></td><td>${u.Email||'-'}</td>
+        <td><span class="badge badge-${u.Company}">${u.Company}</span></td>
+        <td><span class="badge badge-${u.Role}">${u.Role}</span></td>
+        <td><span class="badge ${u.Active?'badge-IN':'badge-OUT'}">${u.Active?'Active':'Disabled'}</span></td>
+        <td>
+          <button class="btn btn-warning btn-sm" onclick="toggleUser(${u.Id},${!u.Active})">${u.Active?'Disable':'Enable'}</button>
+          <button class="btn btn-danger btn-sm" onclick="delUser(${u.Id},'${(u.Title||'').replace(/'/g,"\\'")}')">Delete</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+async function addUser(){
+  const name=document.getElementById('u_name').value.trim(), email=document.getElementById('u_email').value.trim().toLowerCase();
+  if(!name||!email){alert('Name and Email required.');return;}
+  loading('Saving...');
+  try{
+    await spPost('PMI_Users',{Title:name,Email:email,Company:document.getElementById('u_co').value,Role:document.getElementById('u_role').value,Active:true});
+    await addAudit('ADD USER',`${name} (${email})`);
+    await showPage('users');
+  }catch(e){alert('Error: '+e.message);doneLoading();}
+}
+async function toggleUser(id,state){
+  loading('Updating...');
+  try{await spPatch('PMI_Users',id,{Active:state});await addAudit('TOGGLE USER',`ID:${id} → ${state?'Active':'Disabled'}`);await showPage('users');}
+  catch(e){alert('Error: '+e.message);doneLoading();}
+}
+async function delUser(id,name){
+  if(!confirm(`Delete user: ${name}?`)) return;
+  loading('Deleting...');
+  try{await spDelete('PMI_Users',id);await addAudit('DELETE USER',`${name} (ID:${id})`);await showPage('users');}
+  catch(e){alert('Error: '+e.message);doneLoading();}
+}
+
+/* ══════════════════════════════════════
+   AUDIT LOG
+══════════════════════════════════════ */
+async function audit(){
+  const logs=await spGet('PMI_Audit','$orderby=Created desc&$top=300');
+  return `
+  <div class="card">
+    <h2>Audit Log — Activity Trail <span class="vn">Nhật ký hoạt động</span></h2>
+    ${logs.length?logs.map(l=>`
+    <div class="auditEntry">
+      <span class="who">${l.UserName||'-'}</span>
+      <span style="color:#aaa;font-size:10px"> &lt;${l.UserEmail||''}&gt; · ${l.Company||''} · ${l.Role||''}</span>
+      <span class="when"> — ${fmtDt(l.Created)}</span>
+      <div class="what"><strong>${l.Title||'-'}</strong>: ${l.Detail||''}</div>
+    </div>`).join(''):'<div class="empty">No activity / Chưa có hoạt động</div>'}
+  </div>`;
+}
+
+/* ══════════════════════════════════════
+   PRINT
+══════════════════════════════════════ */
+function doPrint(title,titleVn,tbl,meta){
+  document.getElementById('printZone').innerHTML=`
+    <div class="print-header"><h2>${title} <span style="font-size:12px;color:#666;font-weight:400">/ ${titleVn}</span></h2>
+    <p>VP/SB Product Management System [PMS] · ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</p></div>
+    <div class="print-meta">${meta.map(m=>`<span><strong>${m[0]}:</strong> ${m[1]}</span>`).join('')}</div>
+    ${tbl}
+    <div class="print-footer">Printed by / In bởi: ${currentUser.name} (${currentUser.email}) · ${fmtDt(new Date().toISOString())}</div>`;
+  window.print();
+}
+function mkTbl(heads,rows,foot=''){
+  return `<table class="print-table"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
+    ${foot?`<tfoot class="print-totals">${foot}</tfoot>`:''}</table>`;
+}
+async function printIB(){
+  const txs=(await getTxs()).filter(t=>t.TxType==='IN');
+  const tP=txs.reduce((s,t)=>s+(t.TotalPurchase||0),0), tF=txs.reduce((s,t)=>s+(t.InboundFee||0),0);
+  doPrint('Inbound Report','Báo cáo nhập kho',mkTbl(
+    ['Date','Co.','WH','Product','Qty','Unit Price','Fee','Unit+Fee','Total Purchase','Supplier','Ref','By'],
+    txs.map(t=>[t.TxDate||'-',t.Company,t.Warehouse,t.ProductName,Number(t.Qty||0).toLocaleString(),`$${fmt(t.UnitPrice)}`,`$${fmt(t.InboundFee)}`,`$${fmt(t.UnitCostIncFee)}`,`$${fmt(t.TotalPurchase)}`,t.Supplier||'-',t.Ref||'-',t.CreatedByName||'-']),
+    `<tr><td colspan="6"></td><td><strong>$${fmt(tF)}</strong></td><td></td><td><strong>$${fmt(tP)}</strong></td><td colspan="3"></td></tr>`
+  ),[['Records',txs.length],['Total Purchase','$'+fmt(tP)],['Total Fees','$'+fmt(tF)]]);
+}
+async function printOB(){
+  const txs=(await getTxs()).filter(t=>t.TxType==='OUT');
+  const tS=txs.reduce((s,t)=>s+(t.TotalSales||0),0), tF=txs.reduce((s,t)=>s+(t.OutboundFee||0),0);
+  doPrint('Outbound Report','Báo cáo xuất kho',mkTbl(
+    ['Date','Co.','WH','Product','Qty','Unit Price','Fee','Total Sales','Net Revenue','Customer','Ref','By'],
+    txs.map(t=>[t.TxDate||'-',t.Company,t.Warehouse,t.ProductName,Number(t.Qty||0).toLocaleString(),`$${fmt(t.UnitSalesPrice)}`,`$${fmt(t.OutboundFee)}`,`$${fmt(t.TotalSales)}`,`$${fmt(t.NetRevenue)}`,t.Customer||'-',t.Ref||'-',t.CreatedByName||'-']),
+    `<tr><td colspan="6"></td><td><strong>$${fmt(tF)}</strong></td><td><strong>$${fmt(tS)}</strong></td><td><strong>$${fmt(tS-tF)}</strong></td><td colspan="3"></td></tr>`
+  ),[['Records',txs.length],['Total Sales','$'+fmt(tS)],['Net Revenue','$'+fmt(tS-tF)]]);
+}
+async function printInv(){
+  const txs=await getTxs(); const inv=computeInv(txs); const rows=[];
+  WAREHOUSES.forEach(wh=>Object.entries(inv[wh]||{}).forEach(([pn,qty])=>{if(qty!==0)rows.push([wh,pn,qty.toLocaleString(),qty>0?'In Stock':'⚠ Negative']);}));
+  doPrint('Inventory Report','Báo cáo tồn kho',mkTbl(['Warehouse','Product','Stock','Status'],rows,''),[['Lines',rows.length]]);
+}
+async function printTx(){
+  const txs=await getTxs();
+  const tI=txs.filter(t=>t.TxType==='IN').reduce((s,t)=>s+(t.TotalPurchase||0),0);
+  const tO=txs.filter(t=>t.TxType==='OUT').reduce((s,t)=>s+(t.TotalSales||0),0);
+  doPrint('Transaction Report','Báo cáo giao dịch',mkTbl(
+    ['Date','Type','Co.','WH','Product','Qty','Unit Price','Fee','Total','Counterpart','Ref','By'],
+    txs.map(t=>[t.TxDate||'-',t.TxType,t.Company,t.Warehouse,t.ProductName,Number(t.Qty||0).toLocaleString(),
+      `$${fmt(t.TxType==='IN'?t.UnitPrice:t.UnitSalesPrice)}`,`$${fmt(t.TxType==='IN'?t.InboundFee:t.OutboundFee)}`,
+      `$${fmt(t.TxType==='IN'?t.TotalPurchase:t.TotalSales)}`,t.Supplier||t.Customer||'-',t.Ref||'-',t.CreatedByName||'-']),
+    `<tr><td colspan="8" style="text-align:right">Total IN:</td><td><strong>$${fmt(tI)}</strong></td><td colspan="3"></td></tr>
+     <tr><td colspan="8" style="text-align:right">Total OUT:</td><td><strong>$${fmt(tO)}</strong></td><td colspan="3"></td></tr>`
+  ),[['Total Records',txs.length],['IN Total','$'+fmt(tI)],['OUT Total','$'+fmt(tO)]]);
+}
+
+/* ══════════════════════════════════════
+   INIT
+══════════════════════════════════════ */
+window.onload = () => initMSAL();
+</script>
+</body>
+</html>
