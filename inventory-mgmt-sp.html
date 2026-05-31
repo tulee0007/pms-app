@@ -60,7 +60,7 @@ main{padding:20px;flex:1;max-width:1440px;width:100%;margin:0 auto;}
 
 .formGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;align-items:end;}
 .formGroup{display:flex;flex-direction:column;gap:4px;}
-.formGroup label{font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.4px;line-height:1.6;}
+.formGroup label{font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.4px;line-height:1.6;min-height:32px;display:flex;flex-direction:column;justify-content:flex-end;}
 .formGroup input,.formGroup select{padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;transition:border-color .2s;}
 .formGroup input:focus,.formGroup select:focus{outline:none;border-color:#2d6a9f;box-shadow:0 0 0 2px rgba(45,106,159,.12);}
 .formGroup.full{grid-column:1/-1;}
@@ -835,7 +835,7 @@ async function users(){
     <h2>Add User <span class="vn">Thêm người dùng</span></h2>
     <div class="formGrid">
       <div class="formGroup"><label>Full Name <span class="vn">Họ và tên</span></label><input id="u_name" placeholder="Nguyen Van A"></div>
-      <div class="formGroup"><label>Email (Microsoft 365)</label><input id="u_email" type="email" placeholder="user@vietpoint.com.vn"></div>
+      <div class="formGroup"><label>Email (Microsoft 365) <span class="vn">Địa chỉ email</span></label><input id="u_email" type="email" placeholder="user@vietpoint.com.vn"></div>
       <div class="formGroup"><label>Company <span class="vn">Công ty</span></label><select id="u_co">${COMPANIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
       <div class="formGroup"><label>Role <span class="vn">Vai trò</span></label><select id="u_role">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></div>
     </div>
